@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vue reactive</title>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="app2"></div>
+  <div>
+    name
+    <input type="text" name="" id="iptName">
+  </div>
+  <div>
+    age
+    <input type="text" name="" id="iptAge">
+  </div>
+</body>
+<script src="./index.js"></script>
+<script>
+const person = reactive({
+    name: 'zhq',
+    age: '12'
+})
+
+new Watcher(() => {
+  document.getElementById('app').innerHTML = `person's name is ${person.name}`
+})
+new Watcher(() => {
+  document.getElementById('app2').innerHTML = `person's age is ${person.age}`
+})
+
+const btn = document.getElementById('btn')
+const iptName = document.getElementById('iptName')
+const iptAge = document.getElementById('iptAge')
+iptName.onchange = function() {
+  const name = iptName.value
+  person.name = name
+}
+iptAge.onchange = function() {
+  const age = iptAge.value
+  person.age = age
+}
+</script>
+</html>
