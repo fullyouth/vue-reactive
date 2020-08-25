@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>vue</title>
+</head>
+
+<body>
+    <div id="app"></div>
+    <div id="app2"></div>
+    <div id="app3"></div>
+    <input type="text" name="" id="iptName">
+    <input type="text" name="" id="iptAge">
+    <input type="text" name="" id="iptSex">
+    <button id="btn">点击</button>
+</body>
+<script>
+// 对象定义为响应式
+function reactive(obj) {
+    Object.keys(obj).forEach(key => {
+        const __dep = defineReactive(obj, key)
+        obj.__dep = __dep
+    })
+    return obj
+}
+
+function defineReactive(obj, key) {
+    let val = obj[key]
+    const dep = new Dep()
+
+    Object.defineProperty(obj, key, {
+        get() {
+            dep.depend()
+            console.log(`get ${key}: ${val}`)
+            return val
+        },
+        set(newVal) {
+            console.log(`set ${key}: ${newVal}`)
+            val = newVal
+            dep.notify()
+        }
+    })
+
+    return dep
+}
+
+
+// 依赖收集分发器
+class Dep{
+    constructor() {
+        this.deps = new Set()
+    }
+
+    depend() {
+        if (Dep.target) {
+            // TODO 当前正在get的data组件的watcher实例 添加至依赖
+            this.deps.add(Dep.target)
+        }
+    }
+
+    notify() {
+        this.deps.forEach(watcher => watcher.update())
+    }
+}
+// TODO 依赖收集使用  相当于全局变量 其实每个组件一个watcher
+Dep.target = null
+
+// watcher
+class Watcher{
+    constructor(getter, options = {}) {
+        const { computed, watch, callback } = options
+        this.getter = getter
+        this.computed = computed
+        this.watch = watch
+        this.callback = callback
+        this.value = undefined
+
+        if (computed) {
+            this.dep = new Dep()
+        } else {
+            this.get()
+        }
+    }
+
+    get() {
+        pushTarget(this)
+        this.value = this.getter()
+        popTarget()
+        return this.value
+    }
+
+    // 仅为computed使用
+    depend() {
+        this.dep.depend()
+    }
+
+    update() {
+        if (this.computed) {
+            this.get()
+            this.dep.notify()
+        } else if (this.watch) {
+            const oldValue = this.value
+            this.get()
+            this.callback(this.value, oldValue)
+        } else {
+            this.get()
+        }
+    }
+}
+
+const targetStack = []
+function pushTarget(_target) {
+    if(Dep.target) targetStack.push(Dep.target)
+    Dep.target = _target
+}
+function popTarget() {
+    Dep.target = targetStack.pop()
+}
+
+function computed(getter) {
+  let def = {}
+  const computedWatcher = new Watcher(getter, { computed: true })
+  Object.defineProperty(def, 'value', {
+    get() {
+      // 先让computedWatcher收集渲染watcher作为自己的依赖。
+      computedWatcher.depend()
+      // 在这次执行用户传入的函数中，又会让响应式的值收集到`computedWatcher`
+      return computedWatcher.get()
+    }
+  })
+  def.__computedWatcher = computedWatcher
+  return def
+}
+
+function watch(getter, callback) {
+  new Watcher(getter, { watch: true, callback })
+}
+
+const person = reactive({
+    name: 'zhq',
+    age: '12',
+    sex: ''
+})
+// 计算属性
+const reversedName = computed(() => person.sex.split('').reverse().join('')) 
+
+watch(
+  () => person.name,
+  (newVal, oldVal) => {
+    console.log('newVal: ', newVal)
+    console.log('old: ', oldVal)
+  }
+)
+
+new Watcher(() => {
+  document.getElementById('app').innerHTML = `person is ${person.name}, reversedName is ${reversedName.value}`
+})
+new Watcher(() => {
+    document.getElementById('app2').innerHTML = `age is ${person.age}`
+    document.getElementById('app3').innerHTML = `sex is ${person.sex}`
+})
+
+const btn = document.getElementById('btn')
+const iptName = document.getElementById('iptName')
+const iptAge = document.getElementById('iptAge')
+const iptSex = document.getElementById('iptSex')
+iptName.onchange = function() {
+    const name = iptName.value
+    person.name = name
+}
+iptAge.onchange = function() {
+    const age = iptAge.value
+    person.age = age
+}
+iptSex.onchange = function() {
+    const sex = iptSex.value
+    person.sex = sex
+}
+console.log(person)
+</script>
+
+</html>
